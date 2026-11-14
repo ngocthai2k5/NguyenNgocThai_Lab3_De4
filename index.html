@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab 3 - Đề 4: Giám sát bể nuôi thủy sản</title>
+<style>
+:root{--bg:#e6edef;--panel:#f7fafb;--ink:#12303b;--mute:#5d7882;--line:#c3d3d8;--water:#1f7a8c;--water2:#8fd0dc;--pump:#1d4ed8;--valve:#b45309;--ok:#15803d;--bad:#b91c1c}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1c21;--panel:#16272e;--ink:#e3f0f3;--mute:#8fa9b2;--line:#2b434c;--water:#38a3b8;--water2:#1b5866;--pump:#7aa2ff;--valve:#f0a050;--ok:#4ade80;--bad:#f87171}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,sans-serif}
+header{padding:20px 24px 8px;display:flex;flex-wrap:wrap;gap:8px 24px;align-items:baseline;justify-content:space-between}
+h1{margin:0;font-size:1.4rem;font-weight:650}
+.sub{color:var(--mute);font-size:.9rem}
+.conn{display:flex;gap:14px;align-items:center;font-size:.9rem}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--bad);display:inline-block;margin-right:6px}
+.dot.on{background:var(--ok)}
+main{display:grid;grid-template-columns:minmax(260px,340px) 1fr;gap:16px;padding:12px 24px 28px;max-width:1100px;margin:0 auto}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+.tank-wrap{display:flex;gap:10px;align-items:stretch}
+.tank{position:relative;flex:1;height:340px;border:3px solid var(--ink);border-top:none;border-radius:0 0 14px 14px;overflow:hidden;background:var(--bg)}
+.water{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(var(--water2),var(--water));transition:height .8s ease}
+.mark{position:absolute;left:0;right:0;border-top:1px dashed var(--mute)}
+.scale{position:relative;width:46px;height:340px;font-size:.78rem;color:var(--mute)}
+.scale span{position:absolute;right:0;transform:translateY(50%)}
+.band{margin-top:12px;font-size:.92rem;min-height:3em}
+.right{display:flex;flex-direction:column;gap:16px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card .label{color:var(--mute);font-size:.9rem}
+.card .num{font-size:2.6rem;font-weight:650;line-height:1.1;font-variant-numeric:tabular-nums}
+.card .unit{font-size:1rem;color:var(--mute);margin-left:4px;font-weight:400}
+.ctrl{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ctrl h3{margin:0 0 2px;font-size:1rem}
+.state{color:var(--mute);font-size:.9rem;margin-bottom:10px}
+.btns{display:flex;gap:8px}
+button{font:inherit;border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:8px 14px;border-radius:8px;cursor:pointer}
+button.main{flex:1;font-weight:600}
+button#btnPump{border-color:var(--pump);color:var(--pump)}button#btnPump.active{background:var(--pump);color:var(--panel)}
+button#btnValve{border-color:var(--valve);color:var(--valve)}button#btnValve.active{background:var(--valve);color:var(--panel)}
+button:focus-visible{outline:3px solid var(--water);outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.mode{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg button{border:none;border-radius:0;padding:8px 18px}
+.seg button.on{background:var(--ink);color:var(--panel)}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:760px){.charts,.cards,.ctrl{grid-template-columns:1fr}}
+canvas{width:100%;height:180px;display:block}
+.demo{font-size:.85rem;color:var(--mute);display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Giám sát bể nuôi thủy, hải sản</h1><div class="sub">Lab 3 – Đề 4 · ESP32 + FreeRTOS · Nguyễn Ngọc Thái - 231432343 </div></div>
+  <div class="conn"><span><i class="dot" id="dot"></i><span id="connText">Đang kết nối MQTT…</span></span>
+  <label class="demo"><input type="checkbox" id="demo">Dữ liệu giả lập</label></div>
+</header>
+<main>
+  <section class="panel">
+    <div class="tank-wrap">
+      <div class="scale" id="scale"></div>
+      <div class="tank" id="tank"><div class="water" id="water"></div></div>
+    </div>
+    <div class="band" id="band">Chưa có dữ liệu từ ESP32.</div>
+  </section>
+  <div class="right">
+    <div class="cards">
+      <div class="card panel"><div class="label">Mực nước</div><div><span class="num level-value">--</span><span class="unit">m</span></div></div>
+      <div class="card panel"><div class="label">Nhiệt độ bể</div><div><span class="num temp-value">--</span><span class="unit">°C</span></div></div>
+    </div>
+    <div class="panel mode"><strong>Chế độ điều khiển</strong>
+      <div class="seg"><button id="mAuto" disabled>Tự động</button><button id="mMan" disabled>Thủ công</button></div>
+      <span class="sub" id="modeHint">Chưa rõ</span></div>
+    <div class="ctrl">
+      <div class="panel"><h3>Máy bơm nước vào</h3><div class="state" id="pumpState">Chưa rõ</div>
+        <div class="btns"><button class="main" id="btnPump" disabled>Bật bơm</button></div></div>
+      <div class="panel"><h3>Van thoát nước ra</h3><div class="state" id="valveState">Chưa rõ</div>
+        <div class="btns"><button class="main" id="btnValve" disabled>Mở van</button></div></div>
+    </div>
+    <div class="charts">
+      <div class="panel"><div class="label sub">Mực nước (m) theo thời gian</div><canvas id="chLevel"></canvas></div>
+      <div class="panel"><div class="label sub">Nhiệt độ bể (°C) theo thời gian</div><canvas id="chTemp"></canvas></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.3.4/dist/mqtt.min.js"></script>
+<script>
+// ====== CẤU HÌNH – phải trùng với sketch.ino ======
+const BROKER = "wss://broker.hivemq.com:8884/mqtt";
+const TOPIC_SENSOR = "lab3/de4/sensor";
+const TOPIC_PUMP   = "lab3/de4/pump/set";
+const TOPIC_VALVE  = "lab3/de4/valve/set";
+const TOPIC_MODE   = "lab3/de4/mode/set";
+const TANK_H = 2.5, MAXPTS = 60;
+
+const $ = s => document.querySelector(s);
+const state = {pump:0, valve:0, auto:true, online:false};
+const hist = {level:[], temp:[]};
+
+// ----- thang đo bể -----
+const scale = $("#scale"), tank = $("#tank");
+[0.5,1,1.5,2,2.5].forEach(v=>{
+  const p = v/TANK_H*100;
+  scale.insertAdjacentHTML("beforeend",`<span style="bottom:${p}%">${v} m</span>`);
+  if(v<TANK_H) tank.insertAdjacentHTML("beforeend",`<div class="mark" style="bottom:${p}%"></div>`);
+});
+scale.insertAdjacentHTML("beforeend",`<span style="bottom:0">0</span>`);
+
+function bandText(l){
+  if(l<0.5) return "Dưới 0,5 m → mở van thoát 10 s";
+  if(l<1.0) return "0,5–1 m → không tác động";
+  if(l<1.5) return "1–1,5 m → bơm 50% công suất, 10 s";
+  if(l<2.0) return "1,5–2 m → bơm 100% công suất, 20 s";
+  return "Từ 2 m trở lên → không tác động";
+}
+
+function render(d){
+  document.querySelectorAll(".level-value").forEach(e=>e.textContent=d.level.toFixed(2));
+  document.querySelectorAll(".temp-value").forEach(e=>e.textContent=d.temp.toFixed(1));
+  $("#water").style.height = Math.min(100,d.level/TANK_H*100)+"%";
+  $("#band").textContent = bandText(d.level);
+  state.pump=d.pump; state.valve=d.valve; state.auto=d.auto!==0; refreshUI();
+  $("#pumpState").textContent = d.pump>0 ? `Đang chạy ${d.pump}% công suất` : "Đang tắt";
+  $("#valveState").textContent = d.valve ? "Đang mở" : "Đang đóng";
+  $("#btnPump").textContent = d.pump>0 ? "Tắt bơm" : "Bật bơm";
+  $("#btnValve").textContent = d.valve ? "Đóng van" : "Mở van";
+  $("#btnPump").classList.toggle("active",d.pump>0);
+  $("#btnValve").classList.toggle("active",!!d.valve);
+  push(hist.level,d.level); push(hist.temp,d.temp);
+  draw($("#chLevel"),hist.level,0,TANK_H,"#1f7a8c");
+  draw($("#chTemp"),hist.temp,15,40,"#b45309");
+}
+function push(a,v){a.push(v); if(a.length>MAXPTS)a.shift();}
+
+// ----- biểu đồ canvas -----
+function draw(cv,data,min,max,color){
+  const r=devicePixelRatio||1, w=cv.clientWidth, h=cv.clientHeight;
+  cv.width=w*r; cv.height=h*r;
+  const g=cv.getContext("2d"); g.scale(r,r);
+  const cs=getComputedStyle(document.body), line=cs.getPropertyValue("--line"), mute=cs.getPropertyValue("--mute");
+  g.font="11px sans-serif"; g.fillStyle=mute; g.strokeStyle=line; g.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=8+(h-24)*i/4; g.beginPath(); g.moveTo(34,y); g.lineTo(w,y); g.stroke();
+    g.fillText((max-(max-min)*i/4).toFixed(1),0,y+4);}
+  if(data.length<2) return;
+  g.strokeStyle=color; g.lineWidth=2; g.beginPath();
+  data.forEach((v,i)=>{const x=34+(w-38)*i/(MAXPTS-1), y=8+(h-24)*(1-(Math.min(max,Math.max(min,v))-min)/(max-min));
+    i?g.lineTo(x,y):g.moveTo(x,y);});
+  g.stroke();
+}
+
+// ----- MQTT -----
+let client=null;
+function setConn(ok,txt){$("#dot").classList.toggle("on",ok); $("#connText").textContent=txt;
+  state.online=ok; refreshUI();}
+function refreshUI(){
+  const on=state.online||$("#demo").checked, man=!state.auto;
+  $("#mAuto").disabled=$("#mMan").disabled=!on;
+  $("#mAuto").classList.toggle("on",state.auto); $("#mMan").classList.toggle("on",man);
+  $("#modeHint").textContent=state.auto?"ESP32 tự bơm/xả theo vùng mực nước":"Bạn điều khiển bơm và van bằng nút bên dưới";
+  $("#btnPump").disabled=$("#btnValve").disabled=!(on&&man);
+}
+function connect(){
+  if(typeof mqtt==="undefined"){setConn(false,"Không tải được thư viện MQTT (kiểm tra mạng)");return;}
+  client=mqtt.connect(BROKER,{clientId:"web-de4-"+Math.random().toString(16).slice(2,8),reconnectPeriod:3000});
+  client.on("connect",()=>{setConn(true,"Đã kết nối broker"); client.subscribe(TOPIC_SENSOR);});
+  client.on("reconnect",()=>setConn(false,"Đang kết nối lại…"));
+  client.on("close",()=>setConn(false,"Mất kết nối broker"));
+  client.on("message",(t,m)=>{
+    if($("#demo").checked) return;
+    try{const d=JSON.parse(m.toString()); if(d.temp<-100) d.temp=NaN; render(d);}catch(e){console.error("JSON lỗi",e);}
+  });
+}
+function send(topic,msg){ if($("#demo").checked){demoCmd(topic,msg);return;} if(client&&client.connected) client.publish(topic,msg); }
+$("#btnPump").onclick =()=>send(TOPIC_PUMP, state.pump>0?"OFF":"ON");
+$("#btnValve").onclick=()=>send(TOPIC_VALVE,state.valve?"OFF":"ON");
+$("#mAuto").onclick=()=>send(TOPIC_MODE,"AUTO");
+$("#mMan").onclick =()=>send(TOPIC_MODE,"MANUAL");
+
+// ----- Chế độ giả lập (để chụp hình khi chưa chạy Wokwi) -----
+let sim={level:1.2,temp:26,pump:0,valve:0,auto:true}, simTimer=null;
+function demoCmd(t,m){
+  if(t===TOPIC_MODE){ sim.auto=(m==="AUTO"); }
+  else if(!sim.auto){ const on=m==="ON"; if(t===TOPIC_PUMP) sim.pump=on?100:0; else sim.valve=on?1:0; }
+  render(sim); }
+function simAuto(){ const l=sim.level; sim.pump=(l>=1&&l<1.5)?50:(l>=1.5&&l<2)?100:0; sim.valve=l<0.5?1:0; }
+$("#demo").onchange=e=>{
+  clearInterval(simTimer);
+  if(e.target.checked){ refreshUI();
+    simTimer=setInterval(()=>{ if(sim.auto) simAuto();
+      sim.level=Math.max(0.2,Math.min(2.4,sim.level+(sim.pump?0.03*sim.pump/50:0)-(sim.valve?0.08:0)+(Math.random()-.5)*0.04));
+      sim.temp=26+Math.sin(Date.now()/9000)*2+(Math.random()-.5)*.2; render(sim);},1000);
+  } else refreshUI(), setConn(client&&client.connected,client&&client.connected?"Đã kết nối broker":"Mất kết nối broker");
+};
+connect();
+window.addEventListener("resize",()=>{draw($("#chLevel"),hist.level,0,TANK_H,"#1f7a8c");draw($("#chTemp"),hist.temp,15,40,"#b45309");});
+</script>
+</body>
+</html>

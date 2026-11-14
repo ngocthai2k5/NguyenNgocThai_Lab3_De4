@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "author": "Nguyen Ngoc Thai",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-hc-sr04", "id": "ultra1", "top": -130, "left": 150, "attrs": { "distance": "130" } },
+    { "type": "wokwi-ds18b20", "id": "temp1", "top": -110, "left": -130, "attrs": {} },
+    { "type": "wokwi-led", "id": "ledPump", "top": 20, "left": 250, "attrs": { "color": "blue" } },
+    { "type": "wokwi-led", "id": "ledValve", "top": 90, "left": 250, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r1", "top": 60, "left": 200, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r2", "top": 130, "left": 200, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    ["esp:5V", "ultra1:VCC", "red", []],
+    ["esp:GND.1", "ultra1:GND", "black", []],
+    ["esp:5", "ultra1:TRIG", "green", []],
+    ["esp:18", "ultra1:ECHO", "blue", []],
+    ["esp:3V3", "temp1:VCC", "red", []],
+    ["esp:GND.1", "temp1:GND", "black", []],
+    ["esp:4", "temp1:DQ", "orange", []],
+    ["esp:25", "r1:1", "blue", []],
+    ["r1:2", "ledPump:A", "blue", []],
+    ["ledPump:C", "esp:GND.2", "black", []],
+    ["esp:26", "r2:1", "red", []],
+    ["r2:2", "ledValve:A", "red", []],
+    ["ledValve:C", "esp:GND.2", "black", []]
+  ],
+  "dependencies": {}
+}
