@@ -4,7 +4,7 @@
 
 - Sinh viên thực hiện: **Nguyễn Ngọc Thái**
 - MSSV: **231432343**
-- Lớp: **[điền lớp]**
+- Lớp: **Kĩ Sư Kĩ Thuật Viễn Thông K64**
 
 ---
 
@@ -93,7 +93,7 @@ Broker: `broker.hivemq.com` (ESP32 dùng cổng 1883, web dùng WebSocket bảo 
 ## 8. Hướng dẫn chạy
 
 1. Mở dự án Wokwi (link ở mục 10), bấm **Start the simulation**. ESP32 tự kết nối mạng `Wokwi-GUEST` và MQTT broker.
-2. Mở `index.html` bằng trình duyệt (cần có Internet). Khi dòng trạng thái báo "Đã kết nối broker", web nhận dữ liệu từ ESP32.
+2. Mở web dashboard (link ở mục 10) hoặc mở `index.html` bằng trình duyệt (cần có Internet). Khi dòng trạng thái báo "Đã kết nối broker", web nhận dữ liệu từ ESP32.
 3. Trong Wokwi, bấm vào HC-SR04 và đổi thuộc tính **Distance** để thay đổi mực nước, rồi quan sát LED, Serial Monitor và web.
 4. Trên web, chọn **Thủ công** để bật/tắt bơm và van bằng nút bấm.
 
@@ -117,4 +117,4 @@ Cả 6 kịch bản cho kết quả đúng như mong đợi. Hình ảnh chi ti�
 ## 10. Liên kết
 
 - Dự án Wokwi: https://wokwi.com/projects/480589827552788481
-- Mã nguồn và web dashboard trên GitHub: https://github.com/doinucuoiem2005-design/NguyenNgocThai_Lab3_De4
+- Web dashboard: https://ngocthai2k5.github.io/NguyenNgocThai_Lab3_De4/
